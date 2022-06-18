@@ -238,6 +238,14 @@ class Tensor
         return { (T*)this->mRawData, ((T*)this->mRawData) + this->size() };
     }
 
+    vk::Buffer getPrimaryBuffer() {
+      return *mPrimaryBuffer;
+    }
+
+    vk::Buffer getStagingBuffer() {
+      return *mStagingBuffer;
+    }
+
   protected:
     // -------------- ALWAYS OWNED RESOURCES
     TensorTypes mTensorType;

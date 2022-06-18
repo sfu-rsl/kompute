@@ -214,6 +214,9 @@ class Manager
      **/
     std::vector<vk::PhysicalDevice> listDevices() const;
 
+    // custom
+    std::shared_ptr<vk::Device> get_device() { return mDevice; }
+
   private:
     // -------------- OPTIONALLY OWNED RESOURCES
     std::shared_ptr<vk::Instance> mInstance = nullptr;

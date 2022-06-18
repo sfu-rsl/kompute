@@ -338,6 +338,15 @@ Algorithm::recordBindCore(const vk::CommandBuffer& commandBuffer)
 }
 
 void
+Algorithm::recordBindPipeline(const vk::CommandBuffer& commandBuffer)
+{
+    KP_LOG_DEBUG("Kompute Algorithm binding pipeline");
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute,
+                               *this->mPipeline);
+}
+
+void
 Algorithm::recordBindPush(const vk::CommandBuffer& commandBuffer)
 {
     if (this->mPushConstantsSize) {

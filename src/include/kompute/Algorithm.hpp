@@ -155,6 +155,9 @@ class Algorithm
      */
     void recordBindCore(const vk::CommandBuffer& commandBuffer);
 
+    // custom modification
+    void recordBindPipeline(const vk::CommandBuffer& commandBuffer);
+
     /**
      * Records command that binds the push constants to the command buffer
      * provided
@@ -230,6 +233,34 @@ class Algorithm
         memcpy(this->mPushConstantsData, data, totalSize);
         this->mPushConstantsDataTypeMemorySize = memorySize;
         this->mPushConstantsSize = size;
+    }
+
+    // custom modification
+    // Assumes that tensors have same layout (types and order) as when the algorithm was originally created
+    void updateTensors(const std::vector<std::shared_ptr<kp::Tensor>> & tensors) {
+      KP_LOG_DEBUG("Kompute Algorithm updating descriptor sets (for tensors)");
+
+      this->mTensors = tensors;
+      for (size_t i = 0; i < this->mTensors.size(); i++) {
+          std::vector<vk::WriteDescriptorSet> computeWriteDescriptorSets;
+
+          vk::DescriptorBufferInfo descriptorBufferInfo =
+            this->mTensors[i]->constructDescriptorBufferInfo();
+
+          computeWriteDescriptorSets.push_back(
+            vk::WriteDescriptorSet(*this->mDescriptorSet,
+                                  i, // Destination binding
+                                  0, // Destination array element
+                                  1, // Descriptor count
+                                  vk::DescriptorType::eStorageBuffer,
+                                  nullptr, // Descriptor image info
+                                  &descriptorBufferInfo));
+
+          this->mDevice->updateDescriptorSets(computeWriteDescriptorSets,
+                                              nullptr);
+      }
+
+    KP_LOG_DEBUG("Kompue Algorithm successfully run init");
     }
 
     /**
