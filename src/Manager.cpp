@@ -23,6 +23,7 @@ debugMessageCallback(VkDebugReportFlagsEXT flags,
                      const char* pMessage,
                      void* pUserData)
 {
+    // fmt::print("[VALIDATION]: {} - {}\n", pLayerPrefix, pMessage);
     KP_LOG_DEBUG("[VALIDATION]: {} - {}", pLayerPrefix, pMessage);
     return VK_FALSE;
 }
@@ -40,8 +41,10 @@ Manager::Manager(uint32_t physicalDeviceIndex,
     this->mManageResources = true;
 
     this->createInstance();
+    std::vector<std::string> d2 = desiredExtensions;
+    d2.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
     this->createDevice(
-      familyQueueIndices, physicalDeviceIndex, desiredExtensions);
+      familyQueueIndices, physicalDeviceIndex, d2);
 }
 
 Manager::Manager(std::shared_ptr<vk::Instance> instance,
@@ -176,6 +179,7 @@ Manager::createInstance()
         "VK_LAYER_LUNARG_assistant_layer",
         "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_KHRONOS_validation",
+        "VK_LAYER_KHRONOS_synchronization2"
     };
     std::vector<std::string> envLayerNames;
     const char* envLayerNamesVal = std::getenv("KOMPUTE_ENV_DEBUG_LAYERS");
@@ -392,6 +396,7 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
                      validExtensions);
     }
 
+    // KP_LOG_INFO("VALID EXTENSIONS: {}", validExtensions);
     vk::DeviceCreateInfo deviceCreateInfo(vk::DeviceCreateFlags(),
                                           deviceQueueCreateInfos.size(),
                                           deviceQueueCreateInfos.data(),
@@ -399,6 +404,12 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
                                           {},
                                           validExtensions.size(),
                                           validExtensions.data());
+    // sync2
+    vk::PhysicalDeviceFeatures2 pdf2;
+    vk::PhysicalDeviceSynchronization2Features s2;
+    s2.synchronization2 = true;
+    pdf2.setPNext(&s2);
+    deviceCreateInfo.setPNext(&pdf2);
 
     this->mDevice = std::make_shared<vk::Device>();
     physicalDevice.createDevice(
