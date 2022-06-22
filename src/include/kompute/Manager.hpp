@@ -216,6 +216,7 @@ class Manager
 
     // custom
     std::shared_ptr<vk::Device> get_device() { return mDevice; }
+    std::shared_ptr<vk::PhysicalDevice> get_physical_device() { return mPhysicalDevice; }
 
   private:
     // -------------- OPTIONALLY OWNED RESOURCES
