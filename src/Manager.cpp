@@ -338,7 +338,8 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
             if (queueFamilyProperties.queueFlags &
                 vk::QueueFlagBits::eCompute) {
                 computeQueueFamilyIndex = i;
-                break;
+                this->mComputeQueueFamilyIndices.push_back(computeQueueFamilyIndex);
+                // break;
             }
         }
 
@@ -346,7 +347,7 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
             throw std::runtime_error("Compute queue is not supported");
         }
 
-        this->mComputeQueueFamilyIndices.push_back(computeQueueFamilyIndex);
+        // this->mComputeQueueFamilyIndices.push_back(computeQueueFamilyIndex);
     } else {
         this->mComputeQueueFamilyIndices = familyQueueIndices;
     }
