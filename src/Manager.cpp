@@ -42,7 +42,7 @@ Manager::Manager(uint32_t physicalDeviceIndex,
 
     this->createInstance();
     std::vector<std::string> d2 = desiredExtensions;
-    d2.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+    // d2.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
     this->createDevice(
       familyQueueIndices, physicalDeviceIndex, d2);
 }
@@ -179,7 +179,7 @@ Manager::createInstance()
         "VK_LAYER_LUNARG_assistant_layer",
         "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_KHRONOS_validation",
-        "VK_LAYER_KHRONOS_synchronization2"
+        // "VK_LAYER_KHRONOS_synchronization2"
     };
     std::vector<std::string> envLayerNames;
     const char* envLayerNamesVal = std::getenv("KOMPUTE_ENV_DEBUG_LAYERS");
