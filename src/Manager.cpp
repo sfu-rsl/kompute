@@ -406,15 +406,15 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
                                           validExtensions.size(),
                                           validExtensions.data());
     // sync2
-    #ifdef KOMPUTE_VK_API_MAJOR_VERSION == 1
-        #ifdef KOMPUTE_VK_API_MINOR_VERSION == 3
-            vk::PhysicalDeviceFeatures2 pdf2;
-            vk::PhysicalDeviceSynchronization2Features s2;
-            s2.synchronization2 = true;
-            pdf2.setPNext(&s2);
-            deviceCreateInfo.setPNext(&pdf2);
-        #endif
-    #endif
+    // #ifdef KOMPUTE_VK_API_MAJOR_VERSION == 1
+    //     #ifdef KOMPUTE_VK_API_MINOR_VERSION == 3
+    //         vk::PhysicalDeviceFeatures2 pdf2;
+    //         vk::PhysicalDeviceSynchronization2Features s2;
+    //         s2.synchronization2 = true;
+    //         pdf2.setPNext(&s2);
+    //         deviceCreateInfo.setPNext(&pdf2);
+    //     #endif
+    // #endif
 
     this->mDevice = std::make_shared<vk::Device>();
     physicalDevice.createDevice(
