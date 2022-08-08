@@ -418,7 +418,7 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
 
     vk::PhysicalDeviceFeatures feat1;
     feat1.shaderFloat64 = true;
-    deviceCreateInfo.setPNext(&feat1);
+    deviceCreateInfo.setPEnabledFeatures(&feat1);
 
     this->mDevice = std::make_shared<vk::Device>();
     physicalDevice.createDevice(
