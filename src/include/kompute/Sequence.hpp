@@ -280,7 +280,8 @@ class Sequence : public std::enable_shared_from_this<Sequence>
     bool mFreeCommandBuffer = false;
 
     // -------------- ALWAYS OWNED RESOURCES
-    vk::Fence mFence;
+    // vk::Fence mFence;
+    vk::Fence* mFence = nullptr;
     std::vector<std::shared_ptr<OpBase>> mOperations;
     std::shared_ptr<vk::QueryPool> timestampQueryPool = nullptr;
 

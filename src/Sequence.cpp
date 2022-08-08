@@ -49,7 +49,9 @@ Sequence::begin()
     }
 
     KP_LOG_INFO("Kompute Sequence command now started recording");
-    this->mCommandBuffer->begin(vk::CommandBufferBeginInfo());
+    vk::CommandBufferBeginInfo begin_info;
+    begin_info.flags |= vk::CommandBufferUsageFlagBits::eSimultaneousUse;
+    this->mCommandBuffer->begin(begin_info);
     this->mRecording = true;
 
     // latch the first timestamp before any commands are submitted
@@ -126,12 +128,17 @@ Sequence::evalAsync()
     vk::SubmitInfo submitInfo(
       0, nullptr, nullptr, 1, this->mCommandBuffer.get());
 
-    this->mFence = this->mDevice->createFence(vk::FenceCreateInfo());
+    if (!this->mFence) {
+        this->mFence = new vk::Fence(this->mDevice->createFence(vk::FenceCreateInfo()));
+    }
+    else {
+        this->mDevice->resetFences({*this->mFence});
+    }
 
     KP_LOG_DEBUG(
       "Kompute sequence submitting command buffer into compute queue");
 
-    this->mComputeQueue->submit(1, &submitInfo, this->mFence);
+    this->mComputeQueue->submit(1, &submitInfo, *this->mFence);
 
     return shared_from_this();
 }
@@ -153,10 +160,15 @@ Sequence::evalAwait(uint64_t waitFor)
         return shared_from_this();
     }
 
-    vk::Result result =
-      this->mDevice->waitForFences(1, &this->mFence, VK_TRUE, waitFor);
-    this->mDevice->destroy(
-      this->mFence, (vk::Optional<const vk::AllocationCallbacks>)nullptr);
+    vk::Result result = vk::Result::eNotReady;
+    while (result == vk::Result::eNotReady) {
+        result = this->mDevice->getFenceStatus(*this->mFence);
+    }
+
+    // vk::Result result =
+    //   this->mDevice->waitForFences(1, this->mFence, VK_TRUE, waitFor);
+    // this->mDevice->destroy(
+    //   this->mFence, (vk::Optional<const vk::AllocationCallbacks>)nullptr);
 
     this->mIsRunning = false;
 
@@ -260,6 +272,13 @@ Sequence::destroy()
 
         this->timestampQueryPool = nullptr;
         KP_LOG_DEBUG("Kompute Sequence Destroyed QueryPool");
+    }
+
+    if (this->mFence) {
+           this->mDevice->destroy(
+      *this->mFence, (vk::Optional<const vk::AllocationCallbacks>)nullptr);
+      delete this->mFence;
+      this->mFence = nullptr;
     }
 
     if (this->mDevice) {
