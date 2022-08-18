@@ -180,7 +180,8 @@ class Manager
           spirv,
           workgroup,
           specializationConstants,
-          pushConstants) };
+          pushConstants,
+          mPipelineCache) };
 
         if (this->mManageResources) {
             this->mManagedAlgorithms.push_back(algorithm);
@@ -218,6 +219,8 @@ class Manager
     std::shared_ptr<vk::Device> get_device() { return mDevice; }
     std::shared_ptr<vk::PhysicalDevice> get_physical_device() { return mPhysicalDevice; }
 
+    void createPipelineCache();
+
   private:
     // -------------- OPTIONALLY OWNED RESOURCES
     std::shared_ptr<vk::Instance> mInstance = nullptr;
@@ -235,6 +238,9 @@ class Manager
     std::vector<std::shared_ptr<vk::Queue>> mComputeQueues;
 
     bool mManageResources = false;
+
+    // Shared by manager and algorithms
+    std::shared_ptr<vk::PipelineCache> mPipelineCache = nullptr;
 
 #if DEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS

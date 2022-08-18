@@ -5,6 +5,7 @@
 
 #include "kompute/Tensor.hpp"
 
+#include <chrono>
 namespace kp {
 
 /**
@@ -38,12 +39,13 @@ class Algorithm
               const std::vector<uint32_t>& spirv = {},
               const Workgroup& workgroup = {},
               const std::vector<S>& specializationConstants = {},
-              const std::vector<P>& pushConstants = {})
+              const std::vector<P>& pushConstants = {}, 
+              std::shared_ptr<vk::PipelineCache> pipelineCache = nullptr)
     {
         KP_LOG_DEBUG("Kompute Algorithm Constructor with device");
 
         this->mDevice = device;
-
+        this->mPipelineCache = pipelineCache;
         if (tensors.size() && spirv.size()) {
             KP_LOG_INFO(
               "Kompute Algorithm initialising with tensor size: {} and "
@@ -86,6 +88,7 @@ class Algorithm
                  const std::vector<P>& pushConstants = {})
     {
         KP_LOG_DEBUG("Kompute Algorithm rebuild started");
+        auto t0 = std::chrono::high_resolution_clock::now();
 
         this->mTensors = tensors;
         this->mSpirv = spirv;
@@ -129,8 +132,17 @@ class Algorithm
         }
 
         this->createParameters();
+        auto t1 = std::chrono::high_resolution_clock::now();
         this->createShaderModule();
+        auto t2 = std::chrono::high_resolution_clock::now();
         this->createPipeline();
+        auto t3 = std::chrono::high_resolution_clock::now();
+        // fmt::print("t1: {}\nt2: {}\nt3: {}\n", 
+        //         std::chrono::duration<double>(t1-t0).count(),
+        //                 std::chrono::duration<double>(t2-t1).count(),
+        //                         std::chrono::duration<double>(t3-t2).count()
+        // );
+
     }
 
     /**

@@ -45,7 +45,19 @@ Manager::Manager(uint32_t physicalDeviceIndex,
     // d2.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
     this->createDevice(
       familyQueueIndices, physicalDeviceIndex, d2);
+
+    this->createPipelineCache();
+
 }
+
+    void Manager::createPipelineCache() {
+    vk::PipelineCacheCreateInfo pipelineCacheInfo =
+    vk::PipelineCacheCreateInfo();
+    this->mPipelineCache = std::make_shared<vk::PipelineCache>();
+    this->mDevice->createPipelineCache(
+      &pipelineCacheInfo, nullptr, this->mPipelineCache.get());
+    }
+
 
 Manager::Manager(std::shared_ptr<vk::Instance> instance,
                  std::shared_ptr<vk::PhysicalDevice> physicalDevice,
@@ -56,6 +68,8 @@ Manager::Manager(std::shared_ptr<vk::Instance> instance,
     this->mInstance = instance;
     this->mPhysicalDevice = physicalDevice;
     this->mDevice = device;
+
+    this->createPipelineCache();
 }
 
 Manager::~Manager()
