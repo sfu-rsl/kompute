@@ -27,6 +27,7 @@ class Tensor
         eDevice = 0,  ///< Type is device memory, source and destination
         eHost = 1,    ///< Type is host memory, source and destination
         eStorage = 2, ///< Type is Device memory (only)
+        eDeviceCached, /// Primary buffer is device memory but staging buffer on host is uncached (fast readbacks)
     };
     enum class TensorDataTypes
     {
@@ -244,6 +245,48 @@ class Tensor
 
     vk::Buffer getStagingBuffer() {
       return *mStagingBuffer;
+    }
+
+    // Flush writes from host so that GPU can see them
+    void flush() {
+      KP_LOG_DEBUG("Kompute Tensor flushing data from host buffer");
+
+      std::shared_ptr<vk::DeviceMemory> hostVisibleMemory = nullptr;
+
+      if (this->mTensorType == TensorTypes::eHost) {
+          hostVisibleMemory = this->mPrimaryMemory;
+      } else if (this->mTensorType == TensorTypes::eDevice || this->mTensorType == TensorTypes::eDeviceCached) {
+          hostVisibleMemory = this->mStagingMemory;
+      } else {
+          KP_LOG_WARN(
+            "Kompute Tensor flushing data not supported on storage tensor");
+          return;
+      }
+
+      vk::DeviceSize bufferSize = this->memorySize();
+      vk::MappedMemoryRange mappedRange(*hostVisibleMemory, 0, bufferSize);
+      this->mDevice->flushMappedMemoryRanges(1, &mappedRange);
+    }
+
+    // Invalidate mapped memory ranges so that CPU can see GPU writes
+    void invalidate() {
+      KP_LOG_DEBUG("Kompute Tensor invalidating host buffer memory ranges");
+
+      std::shared_ptr<vk::DeviceMemory> hostVisibleMemory = nullptr;
+
+      if (this->mTensorType == TensorTypes::eHost) {
+          hostVisibleMemory = this->mPrimaryMemory;
+      } else if (this->mTensorType == TensorTypes::eDevice || this->mTensorType == TensorTypes::eDeviceCached) {
+          hostVisibleMemory = this->mStagingMemory;
+      } else {
+          KP_LOG_WARN(
+            "Kompute Tensor invalidation not supported on storage tensor");
+          return;
+      }
+
+      vk::DeviceSize bufferSize = this->memorySize();
+      vk::MappedMemoryRange mappedRange(*hostVisibleMemory, 0, bufferSize);
+      this->mDevice->invalidateMappedMemoryRanges(1, &mappedRange);
     }
 
   protected:

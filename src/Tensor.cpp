@@ -117,7 +117,7 @@ Tensor::mapRawData()
 
     if (this->mTensorType == TensorTypes::eHost) {
         hostVisibleMemory = this->mPrimaryMemory;
-    } else if (this->mTensorType == TensorTypes::eDevice) {
+    } else if (this->mTensorType == TensorTypes::eDevice || this->mTensorType == TensorTypes::eDeviceCached) {
         hostVisibleMemory = this->mStagingMemory;
     } else {
         KP_LOG_WARN(
@@ -133,6 +133,10 @@ Tensor::mapRawData()
       *hostVisibleMemory, 0, bufferSize, vk::MemoryMapFlags());
 
     vk::MappedMemoryRange mappedMemoryRange(*hostVisibleMemory, 0, bufferSize);
+    
+    if (this->mTensorType == TensorTypes::eDeviceCached) {
+        this->mDevice->invalidateMappedMemoryRanges(1, &mappedMemoryRange);
+    }
 }
 
 void
@@ -145,7 +149,7 @@ Tensor::unmapRawData()
 
     if (this->mTensorType == TensorTypes::eHost) {
         hostVisibleMemory = this->mPrimaryMemory;
-    } else if (this->mTensorType == TensorTypes::eDevice) {
+    } else if (this->mTensorType == TensorTypes::eDevice || this->mTensorType == TensorTypes::eDeviceCached) {
         hostVisibleMemory = this->mStagingMemory;
     } else {
         KP_LOG_WARN(
@@ -307,6 +311,11 @@ Tensor::getPrimaryBufferUsageFlags()
         case TensorTypes::eStorage:
             return vk::BufferUsageFlagBits::eStorageBuffer;
             break;
+        case TensorTypes::eDeviceCached:
+            return vk::BufferUsageFlagBits::eStorageBuffer |
+                   vk::BufferUsageFlagBits::eTransferSrc |
+                   vk::BufferUsageFlagBits::eTransferDst;
+            break;
         default:
             throw std::runtime_error("Kompute Tensor invalid tensor type");
     }
@@ -326,6 +335,9 @@ Tensor::getPrimaryMemoryPropertyFlags()
         case TensorTypes::eStorage:
             return vk::MemoryPropertyFlagBits::eDeviceLocal;
             break;
+        case TensorTypes::eDeviceCached:
+            return vk::MemoryPropertyFlagBits::eDeviceLocal;
+            break;
         default:
             throw std::runtime_error("Kompute Tensor invalid tensor type");
     }
@@ -339,6 +351,10 @@ Tensor::getStagingBufferUsageFlags()
             return vk::BufferUsageFlagBits::eTransferSrc |
                    vk::BufferUsageFlagBits::eTransferDst;
             break;
+        case TensorTypes::eDeviceCached:
+            return vk::BufferUsageFlagBits::eTransferSrc |
+                vk::BufferUsageFlagBits::eTransferDst;
+            break;    
         default:
             throw std::runtime_error("Kompute Tensor invalid tensor type");
     }
@@ -351,6 +367,10 @@ Tensor::getStagingMemoryPropertyFlags()
         case TensorTypes::eDevice:
             return vk::MemoryPropertyFlagBits::eHostVisible |
                    vk::MemoryPropertyFlagBits::eHostCoherent;
+            break;
+        case TensorTypes::eDeviceCached:
+            return vk::MemoryPropertyFlagBits::eHostVisible |
+                   vk::MemoryPropertyFlagBits::eHostCached;
             break;
         default:
             throw std::runtime_error("Kompute Tensor invalid tensor type");
@@ -381,7 +401,7 @@ Tensor::allocateMemoryCreateGPUResources()
                              this->getPrimaryMemoryPropertyFlags());
     this->mFreePrimaryMemory = true;
 
-    if (this->mTensorType == TensorTypes::eDevice) {
+    if (this->mTensorType == TensorTypes::eDevice || this->mTensorType == TensorTypes::eDeviceCached) {
         KP_LOG_DEBUG("Kompute Tensor creating staging buffer and memory");
 
         this->mStagingBuffer = std::make_shared<vk::Buffer>();
