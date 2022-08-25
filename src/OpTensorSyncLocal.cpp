@@ -30,7 +30,7 @@ OpTensorSyncLocal::record(const vk::CommandBuffer& commandBuffer)
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal record called");
 
     for (size_t i = 0; i < this->mTensors.size(); i++) {
-        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDevice) {
+        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDevice || this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDeviceCached) {
 
             this->mTensors[i]->recordPrimaryBufferMemoryBarrier(
               commandBuffer,
@@ -63,6 +63,13 @@ OpTensorSyncLocal::postEval(const vk::CommandBuffer& commandBuffer)
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal postEval called");
 
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal mapping data into tensor local");
+
+    // ranges should be invalidated for the cached CPU visible buffers
+    for (size_t i = 0; i < this->mTensors.size(); i++) {
+        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDeviceCached) {
+            this->mTensors[i]->invalidate();
+        }
+    }
 }
 
 }

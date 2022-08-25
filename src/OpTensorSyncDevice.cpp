@@ -30,7 +30,7 @@ OpTensorSyncDevice::record(const vk::CommandBuffer& commandBuffer)
     KP_LOG_DEBUG("Kompute OpTensorSyncDevice record called");
 
     for (size_t i = 0; i < this->mTensors.size(); i++) {
-        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDevice) {
+        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDevice || this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDeviceCached) {
             this->mTensors[i]->recordCopyFromStagingToDevice(commandBuffer);
         }
     }
@@ -40,6 +40,13 @@ void
 OpTensorSyncDevice::preEval(const vk::CommandBuffer& commandBuffer)
 {
     KP_LOG_DEBUG("Kompute OpTensorSyncDevice preEval called");
+
+    // Should flush memory before the copy is done
+    for (size_t i = 0; i < this->mTensors.size(); i++) {
+        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDeviceCached) {
+            this->mTensors[i]->flush();
+        }
+    }
 }
 
 void
