@@ -8,6 +8,9 @@
 
 #include "kompute/Sequence.hpp"
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 #define KP_DEFAULT_SESSION "DEFAULT"
 
 namespace kp {
@@ -85,7 +88,7 @@ class Manager
         KP_LOG_DEBUG("Kompute Manager tensor creation triggered");
 
         std::shared_ptr<TensorT<T>> tensor{ new kp::TensorT<T>(
-          this->mPhysicalDevice, this->mDevice, data, tensorType) };
+          this->mPhysicalDevice, this->mDevice, data, tensorType, &allocator) };
 
         if (this->mManageResources) {
             this->mManagedTensors.push_back(tensor);
@@ -114,7 +117,9 @@ class Manager
                                                        elementTotalCount,
                                                        elementMemorySize,
                                                        dataType,
-                                                       tensorType) };
+                                                       tensorType,
+                                                       &allocator
+                                                       ) };
 
         if (this->mManageResources) {
             this->mManagedTensors.push_back(tensor);
@@ -221,6 +226,21 @@ class Manager
 
     void createPipelineCache();
 
+    void createAllocator() {
+      VmaAllocatorCreateInfo info = {};
+      info.vulkanApiVersion = VK_API_VERSION_1_2;
+      info.physicalDevice = *mPhysicalDevice;
+      info.device = *mDevice;
+      info.instance = *mInstance;
+      info.pVulkanFunctions = nullptr;
+
+      vmaCreateAllocator(&info, &allocator);
+    }
+
+    void destroyAllocator() {
+      vmaDestroyAllocator(allocator);
+    }
+
   private:
     // -------------- OPTIONALLY OWNED RESOURCES
     std::shared_ptr<vk::Instance> mInstance = nullptr;
@@ -241,6 +261,7 @@ class Manager
 
     // Shared by manager and algorithms
     std::shared_ptr<vk::PipelineCache> mPipelineCache = nullptr;
+    VmaAllocator allocator;
 
 #if DEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS

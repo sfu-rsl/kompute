@@ -48,6 +48,8 @@ Manager::Manager(uint32_t physicalDeviceIndex,
 
     this->createPipelineCache();
 
+    this->createAllocator();
+
 }
 
     void Manager::createPipelineCache() {
@@ -121,6 +123,9 @@ Manager::destroy()
         }
         this->mManagedTensors.clear();
     }
+
+    // destroy allocator
+    this->destroyAllocator();
 
     if (this->mFreeDevice) {
         KP_LOG_INFO("Destroying device");

@@ -92,6 +92,10 @@ target_link_libraries(
     fmt::fmt
 )
 
+# VMA
+add_subdirectory(${PROJECT_SOURCE_DIR}/external/VulkanMemoryAllocator {CMAKE_CURRENT_BINARY_DIR}/kompute_vma)
+target_link_libraries(kompute VulkanMemoryAllocator)
+
 #####################################################
 #################### SPDLOG #######################
 #####################################################
