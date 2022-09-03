@@ -67,15 +67,16 @@ else()
     )
 endif()
 
-# if(KOMPUTE_OPT_REPO_SUBMODULE_BUILD)
-# # Override the default Vulkan::Vulkan headers
-# # In this case we only use the build interface due to https://github.com/KhronosGroup/Vulkan-Headers/issues/157
-#     add_subdirectory(${PROJECT_SOURCE_DIR}/external/Vulkan-Headers ${CMAKE_CURRENT_BINARY_DIR}/kompute_vulkan_headers)
-#     get_target_property(VULKAN_HEADERS_INCLUDES Vulkan-Headers INTERFACE_INCLUDE_DIRECTORIES)
-#     target_include_directories(
-#         kompute PUBLIC
-#         $<BUILD_INTERFACE:${VULKAN_HEADERS_INCLUDES}>)
-# endif()
+if(KOMPUTE_OPT_REPO_SUBMODULE_BUILD)
+# Override the default Vulkan::Vulkan headers
+# In this case we only use the build interface due to https://github.com/KhronosGroup/Vulkan-Headers/issues/157
+    add_subdirectory(${PROJECT_SOURCE_DIR}/external/Vulkan-Headers ${CMAKE_CURRENT_BINARY_DIR}/kompute_vulkan_headers)
+    get_target_property(VULKAN_HEADERS_INCLUDES Vulkan-Headers INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(
+        kompute PUBLIC
+        $<BUILD_INTERFACE:${VULKAN_HEADERS_INCLUDES}>)
+    message("Overriding Vulkan headers!")
+endif()
 
 #####################################################
 #################### fmt #######################
@@ -93,8 +94,9 @@ target_link_libraries(
 )
 
 # VMA
-add_subdirectory(${PROJECT_SOURCE_DIR}/external/VulkanMemoryAllocator {CMAKE_CURRENT_BINARY_DIR}/kompute_vma)
-target_link_libraries(kompute VulkanMemoryAllocator)
+# add_subdirectory(${PROJECT_SOURCE_DIR}/external/VulkanMemoryAllocator {CMAKE_CURRENT_BINARY_DIR}/kompute_vma)
+# target_link_libraries(kompute VulkanMemoryAllocator)
+target_include_directories(kompute PUBLIC ${PROJECT_SOURCE_DIR}/external/VulkanMemoryAllocator/include)
 
 #####################################################
 #################### SPDLOG #######################
