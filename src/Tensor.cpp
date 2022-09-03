@@ -634,7 +634,7 @@ Tensor::destroy()
 
     if (this->mFreeStagingMemory) {
 
-        if (this->mPrimaryAllocation) {
+        if (this->mStagingAllocation) {
             vmaFreeMemory(*mAllocator, *mStagingAllocation);
             mStagingAllocation = nullptr;
             this->mFreeStagingMemory = false;

@@ -241,6 +241,21 @@ class Manager
       vmaDestroyAllocator(allocator);
     }
 
+    // For debugging leaks.
+    void print_stats() {
+      VmaTotalStatistics stats;
+      vmaCalculateStatistics(allocator, &stats);
+
+      std::cout << "==================VMA================\n";
+      std::cout << "VMA block count: " << stats.total.statistics.blockCount << "\n";
+      std::cout << "VMA block bytes: " << stats.total.statistics.blockBytes << "\n";
+      std::cout << "VMA allocation count: " << stats.total.statistics.allocationCount << "\n";
+      std::cout << "VMA allocation bytes: " << stats.total.statistics.allocationBytes << "\n";
+      std::cout << "VMA unused range count: " << stats.total.unusedRangeCount << "\n";
+      std::cout << "=========================================\n";
+
+    }
+
   private:
     // -------------- OPTIONALLY OWNED RESOURCES
     std::shared_ptr<vk::Instance> mInstance = nullptr;
