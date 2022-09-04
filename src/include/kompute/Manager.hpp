@@ -241,6 +241,13 @@ class Manager
       vmaDestroyAllocator(allocator);
     }
 
+    // Get memory usage as reported by VMA
+    VmaTotalStatistics get_vma_statistics() {
+      VmaTotalStatistics stats;
+      vmaCalculateStatistics(allocator, &stats);
+      return stats;
+    }
+
     // For debugging leaks.
     void print_stats() {
       VmaTotalStatistics stats;
