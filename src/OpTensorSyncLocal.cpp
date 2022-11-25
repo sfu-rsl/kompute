@@ -3,11 +3,10 @@
 #include "kompute/Tensor.hpp"
 
 #include "kompute/operations/OpTensorSyncLocal.hpp"
-
 namespace kp {
 
 OpTensorSyncLocal::OpTensorSyncLocal(
-  const std::vector<std::shared_ptr<Tensor>>& tensors)
+  const std::vector<std::shared_ptr<Tensor>>& tensors, const std::vector<std::pair<uint32_t, uint32_t>>& ranges)
 {
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal constructor with params");
 
@@ -17,6 +16,7 @@ OpTensorSyncLocal::OpTensorSyncLocal(
     }
 
     this->mTensors = tensors;
+    this->mRanges = ranges;
 }
 
 OpTensorSyncLocal::~OpTensorSyncLocal()
@@ -39,7 +39,15 @@ OpTensorSyncLocal::record(const vk::CommandBuffer& commandBuffer)
               vk::PipelineStageFlagBits::eComputeShader,
               vk::PipelineStageFlagBits::eTransfer);
 
-            this->mTensors[i]->recordCopyFromDeviceToStaging(commandBuffer);
+
+            vk::BufferCopy copyRegion;
+            vk::BufferCopy* pRegion = nullptr;
+            if (mRanges.size() > 0) {
+                auto dt_size = this->mTensors[i]->dataTypeMemorySize();
+                copyRegion = vk::BufferCopy(mRanges.at(i).first*dt_size, mRanges.at(i).first*dt_size, mRanges.at(i).second*dt_size);
+                pRegion = &copyRegion;
+            }
+            this->mTensors[i]->recordCopyFromDeviceToStaging(commandBuffer, pRegion);
 
             this->mTensors[i]->recordPrimaryBufferMemoryBarrier(
               commandBuffer,

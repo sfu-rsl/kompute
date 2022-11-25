@@ -204,10 +204,13 @@ Tensor::recordCopyFrom(const vk::CommandBuffer& commandBuffer,
 }
 
 void
-Tensor::recordCopyFromStagingToDevice(const vk::CommandBuffer& commandBuffer)
+Tensor::recordCopyFromStagingToDevice(const vk::CommandBuffer& commandBuffer, vk::BufferCopy* region)
 {
     vk::DeviceSize bufferSize(this->memorySize());
     vk::BufferCopy copyRegion(0, 0, bufferSize);
+    if (region) {
+        copyRegion = *region;
+    }
 
     KP_LOG_DEBUG("Kompute Tensor copying data size {}.", bufferSize);
 
@@ -219,10 +222,13 @@ Tensor::recordCopyFromStagingToDevice(const vk::CommandBuffer& commandBuffer)
 }
 
 void
-Tensor::recordCopyFromDeviceToStaging(const vk::CommandBuffer& commandBuffer)
+Tensor::recordCopyFromDeviceToStaging(const vk::CommandBuffer& commandBuffer, vk::BufferCopy* region)
 {
     vk::DeviceSize bufferSize(this->memorySize());
     vk::BufferCopy copyRegion(0, 0, bufferSize);
+    if (region) {
+        copyRegion = *region;
+    }
 
     KP_LOG_DEBUG("Kompute Tensor copying data size {}.", bufferSize);
 

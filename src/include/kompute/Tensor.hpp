@@ -112,7 +112,7 @@ class Tensor
      *
      * @param commandBuffer Vulkan Command Buffer to record the commands into
      */
-    void recordCopyFromStagingToDevice(const vk::CommandBuffer& commandBuffer);
+    void recordCopyFromStagingToDevice(const vk::CommandBuffer& commandBuffer, vk::BufferCopy* region = nullptr);
 
     /**
      * Records a copy from the internal device memory to the staging memory
@@ -121,7 +121,7 @@ class Tensor
      *
      * @param commandBuffer Vulkan Command Buffer to record the commands into
      */
-    void recordCopyFromDeviceToStaging(const vk::CommandBuffer& commandBuffer);
+    void recordCopyFromDeviceToStaging(const vk::CommandBuffer& commandBuffer, vk::BufferCopy* region = nullptr);
 
     /**
      * Records the buffer memory barrier into the primary buffer and command
