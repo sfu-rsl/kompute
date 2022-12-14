@@ -57,8 +57,9 @@ Tensor::rebuild(void* data,
 
     this->allocateMemoryCreateGPUResources();
     this->mapRawData();
-
-    memcpy(this->mRawData, data, this->memorySize());
+    if (data) {
+        memcpy(this->mRawData, data, this->memorySize());
+    }
 }
 
 Tensor::TensorTypes
