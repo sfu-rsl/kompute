@@ -444,6 +444,7 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
       &deviceCreateInfo, nullptr, this->mDevice.get());
     KP_LOG_DEBUG("Kompute Manager device created");
 
+    this->mQueueLocks.clear();
     for (const uint32_t& familyQueueIndex : this->mComputeQueueFamilyIndices) {
         std::shared_ptr<vk::Queue> currQueue = std::make_shared<vk::Queue>();
 
@@ -453,8 +454,10 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
 
         familyQueueIndexCount[familyQueueIndex]++;
 
+        this->mQueueLocks.push_back(std::make_unique<std::mutex>());
         this->mComputeQueues.push_back(currQueue);
     }
+
 
     KP_LOG_DEBUG("Kompute Manager compute queue obtained");
 }
@@ -469,7 +472,9 @@ Manager::sequence(uint32_t queueIndex, uint32_t totalTimestamps)
       this->mDevice,
       this->mComputeQueues[queueIndex],
       this->mComputeQueueFamilyIndices[queueIndex],
-      totalTimestamps) };
+      totalTimestamps,
+      this->mQueueLocks[queueIndex].get()
+      ) };
 
     if (this->mManageResources) {
         this->mManagedSequences.push_back(sq);

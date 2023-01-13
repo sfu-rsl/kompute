@@ -8,6 +8,9 @@
 
 #include "kompute/Sequence.hpp"
 
+#include <vector>
+#include <mutex>
+
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
@@ -284,6 +287,8 @@ class Manager
     // Shared by manager and algorithms
     std::shared_ptr<vk::PipelineCache> mPipelineCache = nullptr;
     VmaAllocator allocator;
+
+    std::vector<std::unique_ptr<std::mutex>> mQueueLocks;
 
 #if DEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS

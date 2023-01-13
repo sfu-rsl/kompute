@@ -8,7 +8,8 @@ Sequence::Sequence(std::shared_ptr<vk::PhysicalDevice> physicalDevice,
                    std::shared_ptr<vk::Device> device,
                    std::shared_ptr<vk::Queue> computeQueue,
                    uint32_t queueIndex,
-                   uint32_t totalTimestamps)
+                   uint32_t totalTimestamps,
+                   std::mutex* queue_lock): queue_lock(queue_lock)
 {
     KP_LOG_DEBUG("Kompute Sequence Constructor with existing device & queue");
 
@@ -138,8 +139,10 @@ Sequence::evalAsync()
     KP_LOG_DEBUG(
       "Kompute sequence submitting command buffer into compute queue");
 
+    if (queue_lock) queue_lock->lock();
     this->mComputeQueue->submit(1, &submitInfo, *this->mFence);
-
+    if (queue_lock) queue_lock->unlock();
+    
     return shared_from_this();
 }
 
