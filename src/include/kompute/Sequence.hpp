@@ -298,6 +298,8 @@ class Sequence : public std::enable_shared_from_this<Sequence>
 
     // Locks for queues
     std::mutex* queue_lock;
+
+    std::mutex fence_lock;
 };
 
 } // End namespace kp
