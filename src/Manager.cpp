@@ -52,12 +52,17 @@ Manager::Manager(uint32_t physicalDeviceIndex,
 
 }
 
-    void Manager::createPipelineCache() {
+void Manager::createPipelineCache() {
     vk::PipelineCacheCreateInfo pipelineCacheInfo =
     vk::PipelineCacheCreateInfo();
     this->mPipelineCache = std::make_shared<vk::PipelineCache>();
     this->mDevice->createPipelineCache(
       &pipelineCacheInfo, nullptr, this->mPipelineCache.get());
+    }
+
+    void Manager::destroyPipelineCache() {
+        this->mDevice->destroyPipelineCache(*this->mPipelineCache);
+        this->mPipelineCache.reset();
     }
 
 
@@ -126,6 +131,9 @@ Manager::destroy()
 
     // destroy allocator
     this->destroyAllocator();
+
+    // destroy pipeline cache
+    this->destroyPipelineCache();
 
     if (this->mFreeDevice) {
         KP_LOG_INFO("Destroying device");

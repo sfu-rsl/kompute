@@ -228,6 +228,7 @@ class Manager
     std::shared_ptr<vk::PhysicalDevice> get_physical_device() { return mPhysicalDevice; }
 
     void createPipelineCache();
+    void destroyPipelineCache();
 
     void createAllocator() {
       VmaAllocatorCreateInfo info = {};
