@@ -291,11 +291,9 @@ class Manager
 
     std::vector<std::unique_ptr<std::mutex>> mQueueLocks;
 
-#if DEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS
     vk::DebugReportCallbackEXT mDebugReportCallback;
     vk::DispatchLoaderDynamic mDebugDispatcher;
-#endif
 #endif
 
     // Create functions
