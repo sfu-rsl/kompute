@@ -49,6 +49,7 @@ Algorithm::destroy()
         this->mPipeline = nullptr;
     }
 
+  /*
     if (this->mFreePipelineCache && this->mPipelineCache) {
         KP_LOG_DEBUG("Kompute Algorithm Destroying pipeline cache");
         if (!this->mPipelineCache) {
@@ -60,7 +61,7 @@ Algorithm::destroy()
           (vk::Optional<const vk::AllocationCallbacks>)nullptr);
         this->mPipelineCache = nullptr;
     }
-
+  */
     if (this->mFreePipelineLayout && this->mPipelineLayout) {
         KP_LOG_DEBUG("Kompute Algorithm Destroying pipeline layout");
         if (!this->mPipelineLayout) {

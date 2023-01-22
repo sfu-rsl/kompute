@@ -36,7 +36,7 @@ Manager::Manager(uint32_t physicalDeviceIndex,
                  const std::vector<uint32_t>& familyQueueIndices,
                  const std::vector<std::string>& desiredExtensions)
 {
-    this->mManageResources = true;
+    this->mManageResources = false;
 
     this->createInstance();
     std::vector<std::string> d2 = desiredExtensions;
@@ -75,6 +75,7 @@ Manager::Manager(std::shared_ptr<vk::Instance> instance,
     this->mDevice = device;
 
     this->createPipelineCache();
+    this->createAllocator();
 }
 
 Manager::~Manager()
