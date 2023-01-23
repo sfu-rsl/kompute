@@ -11,7 +11,7 @@
 
 namespace kp {
 
-#if DEBUG
+#ifndef NDEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 debugMessageCallback(VkDebugReportFlagsEXT flags,
@@ -150,7 +150,7 @@ Manager::destroy()
         return;
     }
 
-#if DEBUG
+#ifndef NDEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS
     if (this->mDebugReportCallback) {
         this->mInstance->destroyDebugReportCallbackEXT(
@@ -185,7 +185,7 @@ Manager::createInstance()
 
     std::vector<const char*> applicationExtensions;
 
-#if DEBUG
+#ifndef NDEBUG
     applicationExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 #endif
 
@@ -198,7 +198,7 @@ Manager::createInstance()
           applicationExtensions.data();
     }
 
-#if DEBUG
+#ifndef NDEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS
     KP_LOG_DEBUG("Kompute Manager adding debug validation layers");
     // We'll identify the layers that are supported
@@ -259,7 +259,7 @@ Manager::createInstance()
       &computeInstanceCreateInfo, nullptr, this->mInstance.get());
     KP_LOG_DEBUG("Kompute Manager Instance Created");
 
-#if DEBUG
+#ifndef NDEBUG
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS
     KP_LOG_DEBUG("Kompute Manager adding debug callbacks");
     if (validLayerNames.size() > 0) {
