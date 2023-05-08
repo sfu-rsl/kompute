@@ -88,7 +88,7 @@ class Algorithm
                  const std::vector<P>& pushConstants = {})
     {
         KP_LOG_DEBUG("Kompute Algorithm rebuild started");
-        auto t0 = std::chrono::high_resolution_clock::now();
+        // auto t0 = std::chrono::high_resolution_clock::now();
 
         this->mTensors = tensors;
         this->mSpirv = spirv;
@@ -132,11 +132,11 @@ class Algorithm
         }
 
         this->createParameters();
-        auto t1 = std::chrono::high_resolution_clock::now();
+        // auto t1 = std::chrono::high_resolution_clock::now();
         this->createShaderModule();
-        auto t2 = std::chrono::high_resolution_clock::now();
+        // auto t2 = std::chrono::high_resolution_clock::now();
         this->createPipeline();
-        auto t3 = std::chrono::high_resolution_clock::now();
+        // auto t3 = std::chrono::high_resolution_clock::now();
         // fmt::print("t1: {}\nt2: {}\nt3: {}\n", 
         //         std::chrono::duration<double>(t1-t0).count(),
         //                 std::chrono::duration<double>(t2-t1).count(),
