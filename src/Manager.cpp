@@ -9,6 +9,9 @@
 #include <sstream>
 #include <string>
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 namespace kp {
 
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS
@@ -529,6 +532,42 @@ std::shared_ptr<vk::Instance>
 Manager::getVkInstance() const
 {
     return this->mInstance;
+}
+
+void Manager::createAllocator() {
+    VmaAllocatorCreateInfo info = {};
+    info.vulkanApiVersion = VK_API_VERSION_1_2;
+    info.physicalDevice = *mPhysicalDevice;
+    info.device = *mDevice;
+    info.instance = *mInstance;
+    info.pVulkanFunctions = nullptr;
+
+    vmaCreateAllocator(&info, &allocator);
+}
+
+void Manager::destroyAllocator() {
+    vmaDestroyAllocator(allocator);
+}
+
+// Get memory usage as reported by VMA
+VmaTotalStatistics Manager::get_vma_statistics() {
+    VmaTotalStatistics stats;
+    vmaCalculateStatistics(allocator, &stats);
+    return stats;
+}
+
+void Manager::print_stats() {
+    VmaTotalStatistics stats;
+    vmaCalculateStatistics(allocator, &stats);
+
+    std::cout << "==================VMA================\n";
+    std::cout << "VMA block count: " << stats.total.statistics.blockCount << "\n";
+    std::cout << "VMA block bytes: " << stats.total.statistics.blockBytes << "\n";
+    std::cout << "VMA allocation count: " << stats.total.statistics.allocationCount << "\n";
+    std::cout << "VMA allocation bytes: " << stats.total.statistics.allocationBytes << "\n";
+    std::cout << "VMA unused range count: " << stats.total.unusedRangeCount << "\n";
+    std::cout << "=========================================\n";
+
 }
 
 }

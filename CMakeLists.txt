@@ -94,6 +94,7 @@ kompute_option(KOMPUTE_OPT_ANDROID_BUILD "Enable android compilation flags requi
 kompute_option(KOMPUTE_OPT_DISABLE_VK_DEBUG_LAYERS "Explicitly disable debug layers even on debug." OFF)
 kompute_option(KOMPUTE_OPT_DISABLE_VULKAN_VERSION_CHECK "Whether to check if your driver supports the Vulkan Header version you are linking against. This might be useful in case you build shared on a different system than you run later." OFF)
 kompute_option(KOMPUTE_OPT_BUILD_SHADERS "Rebuilds all compute shaders during compilation and does not use the already precompiled versions. Requires glslangValidator to be installed on your system." OFF)
+kompute_option(KOMPUTE_OPT_RELAX "Relaxes errors and warnings" OFF)
 
 # External components
 kompute_option(KOMPUTE_OPT_USE_BUILT_IN_SPDLOG "Use the built-in version of Spdlog. Requires 'KOMPUTE_OPT_USE_SPDLOG' to be set to ON in order to have any effect." ON)
@@ -246,7 +247,9 @@ endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
+    if(NOT KOMPUTE_OPT_RELAX)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
+    endif()
 endif()
 
 if(KOMPUTE_OPT_CODE_COVERAGE)

@@ -11,8 +11,8 @@
 
 #include <vector>
 #include <mutex>
+#include <iostream>
 
-#define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
 #define KP_DEFAULT_SESSION "DEFAULT"
@@ -239,42 +239,15 @@ class Manager
     void createPipelineCache();
     void destroyPipelineCache();
 
-    void createAllocator() {
-      VmaAllocatorCreateInfo info = {};
-      info.vulkanApiVersion = VK_API_VERSION_1_2;
-      info.physicalDevice = *mPhysicalDevice;
-      info.device = *mDevice;
-      info.instance = *mInstance;
-      info.pVulkanFunctions = nullptr;
+    void createAllocator();
 
-      vmaCreateAllocator(&info, &allocator);
-    }
-
-    void destroyAllocator() {
-      vmaDestroyAllocator(allocator);
-    }
+    void destroyAllocator();
 
     // Get memory usage as reported by VMA
-    VmaTotalStatistics get_vma_statistics() {
-      VmaTotalStatistics stats;
-      vmaCalculateStatistics(allocator, &stats);
-      return stats;
-    }
+    VmaTotalStatistics get_vma_statistics();
 
     // For debugging leaks.
-    void print_stats() {
-      VmaTotalStatistics stats;
-      vmaCalculateStatistics(allocator, &stats);
-
-      std::cout << "==================VMA================\n";
-      std::cout << "VMA block count: " << stats.total.statistics.blockCount << "\n";
-      std::cout << "VMA block bytes: " << stats.total.statistics.blockBytes << "\n";
-      std::cout << "VMA allocation count: " << stats.total.statistics.allocationCount << "\n";
-      std::cout << "VMA allocation bytes: " << stats.total.statistics.allocationBytes << "\n";
-      std::cout << "VMA unused range count: " << stats.total.unusedRangeCount << "\n";
-      std::cout << "=========================================\n";
-
-    }
+    void print_stats();
 
   private:
     // -------------- OPTIONALLY OWNED RESOURCES
