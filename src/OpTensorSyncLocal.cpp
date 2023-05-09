@@ -3,11 +3,10 @@
 #include "kompute/Tensor.hpp"
 
 #include "kompute/operations/OpTensorSyncLocal.hpp"
-
 namespace kp {
 
 OpTensorSyncLocal::OpTensorSyncLocal(
-  const std::vector<std::shared_ptr<Tensor>>& tensors)
+  const std::vector<std::shared_ptr<Tensor>>& tensors, const std::vector<std::pair<uint32_t, uint32_t>>& ranges)
 {
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal constructor with params");
 
@@ -17,6 +16,7 @@ OpTensorSyncLocal::OpTensorSyncLocal(
     }
 
     this->mTensors = tensors;
+    this->mRanges = ranges;
 }
 
 OpTensorSyncLocal::~OpTensorSyncLocal()
@@ -30,7 +30,7 @@ OpTensorSyncLocal::record(const vk::CommandBuffer& commandBuffer)
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal record called");
 
     for (size_t i = 0; i < this->mTensors.size(); i++) {
-        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDevice) {
+        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDevice || this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDeviceCached) {
 
             this->mTensors[i]->recordPrimaryBufferMemoryBarrier(
               commandBuffer,
@@ -39,7 +39,15 @@ OpTensorSyncLocal::record(const vk::CommandBuffer& commandBuffer)
               vk::PipelineStageFlagBits::eComputeShader,
               vk::PipelineStageFlagBits::eTransfer);
 
-            this->mTensors[i]->recordCopyFromDeviceToStaging(commandBuffer);
+
+            vk::BufferCopy copyRegion;
+            vk::BufferCopy* pRegion = nullptr;
+            if (mRanges.size() > 0) {
+                auto dt_size = this->mTensors[i]->dataTypeMemorySize();
+                copyRegion = vk::BufferCopy(mRanges.at(i).first*dt_size, mRanges.at(i).first*dt_size, mRanges.at(i).second*dt_size);
+                pRegion = &copyRegion;
+            }
+            this->mTensors[i]->recordCopyFromDeviceToStaging(commandBuffer, pRegion);
 
             this->mTensors[i]->recordPrimaryBufferMemoryBarrier(
               commandBuffer,
@@ -63,6 +71,13 @@ OpTensorSyncLocal::postEval(const vk::CommandBuffer& /*commandBuffer*/)
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal postEval called");
 
     KP_LOG_DEBUG("Kompute OpTensorSyncLocal mapping data into tensor local");
+
+    // ranges should be invalidated for the cached CPU visible buffers
+    for (size_t i = 0; i < this->mTensors.size(); i++) {
+        if (this->mTensors[i]->tensorType() == Tensor::TensorTypes::eDeviceCached) {
+            this->mTensors[i]->invalidate();
+        }
+    }
 }
 
 }

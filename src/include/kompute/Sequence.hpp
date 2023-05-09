@@ -6,6 +6,7 @@
 #include "kompute/operations/OpAlgoDispatch.hpp"
 #include "kompute/operations/OpBase.hpp"
 
+#include <mutex>
 namespace kp {
 
 /**
@@ -28,7 +29,8 @@ class Sequence : public std::enable_shared_from_this<Sequence>
              std::shared_ptr<vk::Device> device,
              std::shared_ptr<vk::Queue> computeQueue,
              uint32_t queueIndex,
-             uint32_t totalTimestamps = 0);
+             uint32_t totalTimestamps = 0,
+             std::mutex* queue_lock = nullptr);
     /**
      * Destructor for sequence which is responsible for cleaning all subsequent
      * owned operations.
@@ -276,7 +278,7 @@ class Sequence : public std::enable_shared_from_this<Sequence>
     bool mFreeCommandBuffer = false;
 
     // -------------- ALWAYS OWNED RESOURCES
-    vk::Fence mFence;
+    vk::Fence* mFence = nullptr;
     std::vector<std::shared_ptr<OpBase>> mOperations{};
     std::shared_ptr<vk::QueryPool> timestampQueryPool = nullptr;
 
@@ -288,6 +290,11 @@ class Sequence : public std::enable_shared_from_this<Sequence>
     void createCommandPool();
     void createCommandBuffer();
     void createTimestampQueryPool(uint32_t totalTimestamps);
+
+    // Locks for queues
+    std::mutex* queue_lock;
+
+    std::mutex fence_lock;
 };
 
 } // End namespace kp

@@ -9,6 +9,12 @@
 #include "kompute/Sequence.hpp"
 #include "logger/Logger.hpp"
 
+#include <vector>
+#include <mutex>
+
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 #define KP_DEFAULT_SESSION "DEFAULT"
 
 namespace kp {
@@ -86,7 +92,7 @@ class Manager
         KP_LOG_DEBUG("Kompute Manager tensor creation triggered");
 
         std::shared_ptr<TensorT<T>> tensor{ new kp::TensorT<T>(
-          this->mPhysicalDevice, this->mDevice, data, tensorType) };
+          this->mPhysicalDevice, this->mDevice, data, tensorType, &allocator) };
 
         if (this->mManageResources) {
             this->mManagedTensors.push_back(tensor);
@@ -115,7 +121,9 @@ class Manager
                                                        elementTotalCount,
                                                        elementMemorySize,
                                                        dataType,
-                                                       tensorType) };
+                                                       tensorType,
+                                                       &allocator
+                                                       ) };
 
         if (this->mManageResources) {
             this->mManagedTensors.push_back(tensor);
@@ -181,7 +189,8 @@ class Manager
           spirv,
           workgroup,
           specializationConstants,
-          pushConstants) };
+          pushConstants,
+          mPipelineCache) };
 
         if (this->mManageResources) {
             this->mManagedAlgorithms.push_back(algorithm);
@@ -223,6 +232,50 @@ class Manager
      **/
     std::shared_ptr<vk::Instance> getVkInstance() const;
 
+    // custom
+    std::shared_ptr<vk::Device> get_device() { return mDevice; }
+    std::shared_ptr<vk::PhysicalDevice> get_physical_device() { return mPhysicalDevice; }
+
+    void createPipelineCache();
+    void destroyPipelineCache();
+
+    void createAllocator() {
+      VmaAllocatorCreateInfo info = {};
+      info.vulkanApiVersion = VK_API_VERSION_1_2;
+      info.physicalDevice = *mPhysicalDevice;
+      info.device = *mDevice;
+      info.instance = *mInstance;
+      info.pVulkanFunctions = nullptr;
+
+      vmaCreateAllocator(&info, &allocator);
+    }
+
+    void destroyAllocator() {
+      vmaDestroyAllocator(allocator);
+    }
+
+    // Get memory usage as reported by VMA
+    VmaTotalStatistics get_vma_statistics() {
+      VmaTotalStatistics stats;
+      vmaCalculateStatistics(allocator, &stats);
+      return stats;
+    }
+
+    // For debugging leaks.
+    void print_stats() {
+      VmaTotalStatistics stats;
+      vmaCalculateStatistics(allocator, &stats);
+
+      std::cout << "==================VMA================\n";
+      std::cout << "VMA block count: " << stats.total.statistics.blockCount << "\n";
+      std::cout << "VMA block bytes: " << stats.total.statistics.blockBytes << "\n";
+      std::cout << "VMA allocation count: " << stats.total.statistics.allocationCount << "\n";
+      std::cout << "VMA allocation bytes: " << stats.total.statistics.allocationBytes << "\n";
+      std::cout << "VMA unused range count: " << stats.total.unusedRangeCount << "\n";
+      std::cout << "=========================================\n";
+
+    }
+
   private:
     // -------------- OPTIONALLY OWNED RESOURCES
     std::shared_ptr<vk::Instance> mInstance = nullptr;
@@ -240,6 +293,12 @@ class Manager
     std::vector<std::shared_ptr<vk::Queue>> mComputeQueues;
 
     bool mManageResources = false;
+
+    // Shared by manager and algorithms
+    std::shared_ptr<vk::PipelineCache> mPipelineCache = nullptr;
+    VmaAllocator allocator;
+
+    std::vector<std::unique_ptr<std::mutex>> mQueueLocks;
 
 #ifndef KOMPUTE_DISABLE_VK_DEBUG_LAYERS
     vk::DebugReportCallbackEXT mDebugReportCallback;

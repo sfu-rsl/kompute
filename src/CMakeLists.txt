@@ -46,6 +46,12 @@ configure_package_config_file(${PROJECT_SOURCE_DIR}/cmake/komputeConfig.cmake.in
 install(FILES ${PROJECT_BINARY_DIR}/kompute/komputeConfig.cmake
     ${PROJECT_BINARY_DIR}/kompute/komputeConfigVersion.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kompute)
 
+# VMA
+# add_subdirectory(${PROJECT_SOURCE_DIR}/external/VulkanMemoryAllocator {CMAKE_CURRENT_BINARY_DIR}/kompute_vma)
+# target_link_libraries(kompute VulkanMemoryAllocator)
+target_include_directories(kompute PUBLIC ${PROJECT_SOURCE_DIR}/external/VulkanMemoryAllocator/include)
+
+
 # ####################################################
 # Linking
 # ####################################################

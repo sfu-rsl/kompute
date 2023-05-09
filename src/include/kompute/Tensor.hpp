@@ -5,7 +5,7 @@
 #include "logger/Logger.hpp"
 #include <memory>
 #include <string>
-
+#include <vk_mem_alloc.h>
 namespace kp {
 
 /**
@@ -30,6 +30,7 @@ class Tensor
         eDevice = 0,  ///< Type is device memory, source and destination
         eHost = 1,    ///< Type is host memory, source and destination
         eStorage = 2, ///< Type is Device memory (only)
+        eDeviceCached, /// Primary buffer is device memory but staging buffer on host is uncached (fast readbacks)
     };
     enum class TensorDataTypes
     {
@@ -59,7 +60,9 @@ class Tensor
            uint32_t elementTotalCount,
            uint32_t elementMemorySize,
            const TensorDataTypes& dataType,
-           const TensorTypes& tensorType = TensorTypes::eDevice);
+           const TensorTypes& tensorType = TensorTypes::eDevice,
+           VmaAllocator* allocator = nullptr
+           );
 
     /**
      * Destructor which is in charge of freeing vulkan resources unless they
@@ -115,7 +118,7 @@ class Tensor
      *
      * @param commandBuffer Vulkan Command Buffer to record the commands into
      */
-    void recordCopyFromStagingToDevice(const vk::CommandBuffer& commandBuffer);
+    void recordCopyFromStagingToDevice(const vk::CommandBuffer& commandBuffer, vk::BufferCopy* region = nullptr);
 
     /**
      * Records a copy from the internal device memory to the staging memory
@@ -124,7 +127,7 @@ class Tensor
      *
      * @param commandBuffer Vulkan Command Buffer to record the commands into
      */
-    void recordCopyFromDeviceToStaging(const vk::CommandBuffer& commandBuffer);
+    void recordCopyFromDeviceToStaging(const vk::CommandBuffer& commandBuffer, vk::BufferCopy* region = nullptr);
 
     /**
      * Records the buffer memory barrier into the primary buffer and command
@@ -244,6 +247,65 @@ class Tensor
         return { (T*)this->mRawData, ((T*)this->mRawData) + this->size() };
     }
 
+    vk::Buffer getPrimaryBuffer() {
+      return *mPrimaryBuffer;
+    }
+
+    vk::Buffer getStagingBuffer() {
+      return *mStagingBuffer;
+    }
+
+    // Flush writes from host so that GPU can see them
+    void flush() {
+      KP_LOG_DEBUG("Kompute Tensor flushing data from host buffer");
+
+    std::shared_ptr<VmaAllocation> hostVisibleMemory = nullptr;
+
+    if (this->mTensorType == TensorTypes::eHost) {
+        // hostVisibleMemory = this->mPrimaryMemory;
+        hostVisibleMemory = this->mPrimaryAllocation;
+    } else if (this->mTensorType == TensorTypes::eDevice || this->mTensorType == TensorTypes::eDeviceCached) {
+        // hostVisibleMemory = this->mStagingMemory;
+        hostVisibleMemory = this->mStagingAllocation;
+    } else {
+        KP_LOG_WARN(
+          "Kompute Tensor mapping data not supported on storage tensor");
+        return;
+    }
+
+      vk::DeviceSize bufferSize = this->memorySize();
+      vmaFlushAllocation(*mAllocator, *hostVisibleMemory, 0, bufferSize);
+      // vk::MappedMemoryRange mappedRange(*hostVisibleMemory, 0, bufferSize);
+      // this->mDevice->flushMappedMemoryRanges(1, &mappedRange);
+    }
+
+    // Invalidate mapped memory ranges so that CPU can see GPU writes
+    void invalidate() {
+      KP_LOG_DEBUG("Kompute Tensor invalidating host buffer memory ranges");
+
+      // std::shared_ptr<vk::DeviceMemory> hostVisibleMemory = nullptr;
+
+    std::shared_ptr<VmaAllocation> hostVisibleMemory = nullptr;
+
+    if (this->mTensorType == TensorTypes::eHost) {
+        // hostVisibleMemory = this->mPrimaryMemory;
+        hostVisibleMemory = this->mPrimaryAllocation;
+    } else if (this->mTensorType == TensorTypes::eDevice || this->mTensorType == TensorTypes::eDeviceCached) {
+        // hostVisibleMemory = this->mStagingMemory;
+        hostVisibleMemory = this->mStagingAllocation;
+      } else {
+          KP_LOG_WARN(
+            "Kompute Tensor invalidation not supported on storage tensor");
+          return;
+      }
+
+      vk::DeviceSize bufferSize = this->memorySize();
+              vmaInvalidateAllocation(*mAllocator, *hostVisibleMemory, 0, bufferSize);
+
+      // vk::MappedMemoryRange mappedRange(*hostVisibleMemory, 0, bufferSize);
+      // this->mDevice->invalidateMappedMemoryRanges(1, &mappedRange);
+    }
+
   protected:
     // -------------- ALWAYS OWNED RESOURCES
     TensorTypes mTensorType;
@@ -252,10 +314,13 @@ class Tensor
     uint32_t mDataTypeMemorySize;
     void* mRawData;
 
+    VmaAllocation allocation;
+
   private:
     // -------------- NEVER OWNED RESOURCES
     std::shared_ptr<vk::PhysicalDevice> mPhysicalDevice;
     std::shared_ptr<vk::Device> mDevice;
+    VmaAllocator* mAllocator;
 
     // -------------- OPTIONALLY OWNED RESOURCES
     std::shared_ptr<vk::Buffer> mPrimaryBuffer;
@@ -267,12 +332,21 @@ class Tensor
     std::shared_ptr<vk::DeviceMemory> mStagingMemory;
     bool mFreeStagingMemory = false;
 
+    std::shared_ptr<VmaAllocation> mPrimaryAllocation;
+      std::shared_ptr<VmaAllocation> mStagingAllocation;
+
+
     void allocateMemoryCreateGPUResources(); // Creates the vulkan buffer
     void createBuffer(std::shared_ptr<vk::Buffer> buffer,
                       vk::BufferUsageFlags bufferUsageFlags);
     void allocateBindMemory(std::shared_ptr<vk::Buffer> buffer,
                             std::shared_ptr<vk::DeviceMemory> memory,
                             vk::MemoryPropertyFlags memoryPropertyFlags);
+
+    void allocateBindMemory(std::shared_ptr<vk::Buffer> buffer,
+                           std::shared_ptr<VmaAllocation> allocation,
+                           vk::MemoryPropertyFlags memoryPropertyFlags);
+
     void recordCopyBuffer(const vk::CommandBuffer& commandBuffer,
                           std::shared_ptr<vk::Buffer> bufferFrom,
                           std::shared_ptr<vk::Buffer> bufferTo,
@@ -303,14 +377,17 @@ class TensorT : public Tensor
     TensorT(std::shared_ptr<vk::PhysicalDevice> physicalDevice,
             std::shared_ptr<vk::Device> device,
             const std::vector<T>& data,
-            const TensorTypes& tensorType = TensorTypes::eDevice)
+            const TensorTypes& tensorType = TensorTypes::eDevice,
+            VmaAllocator* allocator = nullptr)
       : Tensor(physicalDevice,
                device,
                (void*)data.data(),
                data.size(),
                sizeof(T),
                this->dataType(),
-               tensorType)
+               tensorType,
+               allocator
+               )
     {
         KP_LOG_DEBUG("Kompute TensorT constructor with data size {}",
                      data.size());

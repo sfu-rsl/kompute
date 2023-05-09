@@ -25,7 +25,7 @@ class OpTensorSyncDevice : public OpBase
      *
      * @param tensors Tensors that will be used to create in operation.
      */
-    OpTensorSyncDevice(const std::vector<std::shared_ptr<Tensor>>& tensors);
+    OpTensorSyncDevice(const std::vector<std::shared_ptr<Tensor>>& tensors, const std::vector<std::pair<uint32_t, uint32_t>>& ranges = {});
 
     /**
      * Default destructor. This class does not manage memory so it won't be
@@ -58,6 +58,8 @@ class OpTensorSyncDevice : public OpBase
   private:
     // -------------- ALWAYS OWNED RESOURCES
     std::vector<std::shared_ptr<Tensor>> mTensors;
+    std::vector<std::pair<uint32_t, uint32_t>> mRanges;
+
 };
 
 } // End namespace kp

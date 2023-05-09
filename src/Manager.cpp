@@ -27,6 +27,7 @@ debugMessageCallback(VkDebugReportFlagsEXT /*flags*/,
 #endif
                      void* /*pUserData*/)
 {
+    // fmt::print("[VALIDATION]: {} - {}\n", pLayerPrefix, pMessage);
     KP_LOG_DEBUG("[VALIDATION]: {} - {}", pLayerPrefix, pMessage);
     return VK_FALSE;
 }
@@ -41,7 +42,7 @@ Manager::Manager(uint32_t physicalDeviceIndex,
                  const std::vector<uint32_t>& familyQueueIndices,
                  const std::vector<std::string>& desiredExtensions)
 {
-    this->mManageResources = true;
+    this->mManageResources = false;
 
 // Make sure the logger is setup
 #if !KOMPUTE_OPT_LOG_LEVEL_DISABLED
@@ -49,9 +50,30 @@ Manager::Manager(uint32_t physicalDeviceIndex,
 #endif
 
     this->createInstance();
+    std::vector<std::string> d2 = desiredExtensions;
+    // d2.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
     this->createDevice(
-      familyQueueIndices, physicalDeviceIndex, desiredExtensions);
+      familyQueueIndices, physicalDeviceIndex, d2);
+
+    this->createPipelineCache();
+
+    this->createAllocator();
+
 }
+
+void Manager::createPipelineCache() {
+    vk::PipelineCacheCreateInfo pipelineCacheInfo =
+    vk::PipelineCacheCreateInfo();
+    this->mPipelineCache = std::make_shared<vk::PipelineCache>();
+    this->mDevice->createPipelineCache(
+      &pipelineCacheInfo, nullptr, this->mPipelineCache.get());
+    }
+
+    void Manager::destroyPipelineCache() {
+        this->mDevice->destroyPipelineCache(*this->mPipelineCache);
+        this->mPipelineCache.reset();
+    }
+
 
 Manager::Manager(std::shared_ptr<vk::Instance> instance,
                  std::shared_ptr<vk::PhysicalDevice> physicalDevice,
@@ -67,6 +89,9 @@ Manager::Manager(std::shared_ptr<vk::Instance> instance,
 #if !KOMPUTE_OPT_LOG_LEVEL_DISABLED
     logger::setupLogger();
 #endif
+
+    this->createPipelineCache();
+    this->createAllocator();
 }
 
 Manager::~Manager()
@@ -118,6 +143,12 @@ Manager::destroy()
         }
         this->mManagedTensors.clear();
     }
+
+    // destroy allocator
+    this->destroyAllocator();
+
+    // destroy pipeline cache
+    this->destroyPipelineCache();
 
     if (this->mFreeDevice) {
         KP_LOG_INFO("Destroying device");
@@ -187,6 +218,7 @@ Manager::createInstance()
         "VK_LAYER_LUNARG_assistant_layer",
         "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_KHRONOS_validation",
+        // "VK_LAYER_KHRONOS_synchronization2"
     };
     std::vector<std::string> envLayerNames;
     const char* envLayerNamesVal = std::getenv("KOMPUTE_ENV_DEBUG_LAYERS");
@@ -355,7 +387,8 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
                 vk::QueueFlagBits::eCompute) {
                 computeQueueFamilyIndex = i;
                 computeQueueSupported = true;
-                break;
+                this->mComputeQueueFamilyIndices.push_back(computeQueueFamilyIndex);
+                // break;
             }
         }
 
@@ -363,7 +396,7 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
             throw std::runtime_error("Compute queue is not supported");
         }
 
-        this->mComputeQueueFamilyIndices.push_back(computeQueueFamilyIndex);
+        // this->mComputeQueueFamilyIndices.push_back(computeQueueFamilyIndex);
     } else {
         this->mComputeQueueFamilyIndices = familyQueueIndices;
     }
@@ -413,6 +446,7 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
                      fmt::join(validExtensions, ", "));
     }
 
+    // KP_LOG_INFO("VALID EXTENSIONS: {}", validExtensions);
     vk::DeviceCreateInfo deviceCreateInfo(vk::DeviceCreateFlags(),
                                           deviceQueueCreateInfos.size(),
                                           deviceQueueCreateInfos.data(),
@@ -420,12 +454,27 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
                                           {},
                                           validExtensions.size(),
                                           validExtensions.data());
+    // sync2
+    // #ifdef KOMPUTE_VK_API_MAJOR_VERSION == 1
+    //     #ifdef KOMPUTE_VK_API_MINOR_VERSION == 3
+            // vk::PhysicalDeviceFeatures2 pdf2;
+    //         vk::PhysicalDeviceSynchronization2Features s2;
+    //         s2.synchronization2 = true;
+            // pdf2.setPNext(&s2);
+    //         deviceCreateInfo.setPNext(&pdf2);
+    //     #endif
+    // #endif
+
+    vk::PhysicalDeviceFeatures feat1;
+    feat1.shaderFloat64 = true;
+    deviceCreateInfo.setPEnabledFeatures(&feat1);
 
     this->mDevice = std::make_shared<vk::Device>();
     physicalDevice.createDevice(
       &deviceCreateInfo, nullptr, this->mDevice.get());
     KP_LOG_DEBUG("Kompute Manager device created");
 
+    this->mQueueLocks.clear();
     for (const uint32_t& familyQueueIndex : this->mComputeQueueFamilyIndices) {
         std::shared_ptr<vk::Queue> currQueue = std::make_shared<vk::Queue>();
 
@@ -435,8 +484,10 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
 
         familyQueueIndexCount[familyQueueIndex]++;
 
+        this->mQueueLocks.push_back(std::make_unique<std::mutex>());
         this->mComputeQueues.push_back(currQueue);
     }
+
 
     KP_LOG_DEBUG("Kompute Manager compute queue obtained");
 }
@@ -451,7 +502,9 @@ Manager::sequence(uint32_t queueIndex, uint32_t totalTimestamps)
       this->mDevice,
       this->mComputeQueues[queueIndex],
       this->mComputeQueueFamilyIndices[queueIndex],
-      totalTimestamps) };
+      totalTimestamps,
+      this->mQueueLocks[queueIndex].get()
+      ) };
 
     if (this->mManageResources) {
         this->mManagedSequences.push_back(sq);
