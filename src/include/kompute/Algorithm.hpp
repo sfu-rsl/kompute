@@ -7,6 +7,7 @@
 #include "kompute/Tensor.hpp"
 #include "logger/Logger.hpp"
 
+#include <chrono>
 namespace kp {
 
 /**
@@ -40,12 +41,13 @@ class Algorithm
               const std::vector<uint32_t>& spirv = {},
               const Workgroup& workgroup = {},
               const std::vector<S>& specializationConstants = {},
-              const std::vector<P>& pushConstants = {})
+              const std::vector<P>& pushConstants = {}, 
+              std::shared_ptr<vk::PipelineCache> pipelineCache = nullptr)
     {
         KP_LOG_DEBUG("Kompute Algorithm Constructor with device");
 
         this->mDevice = device;
-
+        this->mPipelineCache = pipelineCache;
         if (tensors.size() && spirv.size()) {
             KP_LOG_INFO(
               "Kompute Algorithm initialising with tensor size: {} and "
@@ -88,6 +90,7 @@ class Algorithm
                  const std::vector<P>& pushConstants = {})
     {
         KP_LOG_DEBUG("Kompute Algorithm rebuild started");
+        // auto t0 = std::chrono::high_resolution_clock::now();
 
         this->mTensors = tensors;
         this->mSpirv = spirv;
@@ -131,8 +134,17 @@ class Algorithm
         }
 
         this->createParameters();
+        // auto t1 = std::chrono::high_resolution_clock::now();
         this->createShaderModule();
+        // auto t2 = std::chrono::high_resolution_clock::now();
         this->createPipeline();
+        // auto t3 = std::chrono::high_resolution_clock::now();
+        // fmt::print("t1: {}\nt2: {}\nt3: {}\n", 
+        //         std::chrono::duration<double>(t1-t0).count(),
+        //                 std::chrono::duration<double>(t2-t1).count(),
+        //                         std::chrono::duration<double>(t3-t2).count()
+        // );
+
     }
 
     /**
@@ -156,6 +168,9 @@ class Algorithm
      * @param commandBuffer Command buffer to record the algorithm resources to
      */
     void recordBindCore(const vk::CommandBuffer& commandBuffer);
+
+    // custom modification
+    void recordBindPipeline(const vk::CommandBuffer& commandBuffer);
 
     /**
      * Records command that binds the push constants to the command buffer
@@ -232,6 +247,34 @@ class Algorithm
         memcpy(this->mPushConstantsData, data, totalSize);
         this->mPushConstantsDataTypeMemorySize = memorySize;
         this->mPushConstantsSize = size;
+    }
+
+    // custom modification
+    // Assumes that tensors have same layout (types and order) as when the algorithm was originally created
+    void updateTensors(const std::vector<std::shared_ptr<kp::Tensor>> & tensors) {
+      KP_LOG_DEBUG("Kompute Algorithm updating descriptor sets (for tensors)");
+
+      this->mTensors = tensors;
+      for (size_t i = 0; i < this->mTensors.size(); i++) {
+          std::vector<vk::WriteDescriptorSet> computeWriteDescriptorSets;
+
+          vk::DescriptorBufferInfo descriptorBufferInfo =
+            this->mTensors[i]->constructDescriptorBufferInfo();
+
+          computeWriteDescriptorSets.push_back(
+            vk::WriteDescriptorSet(*this->mDescriptorSet,
+                                  i, // Destination binding
+                                  0, // Destination array element
+                                  1, // Descriptor count
+                                  vk::DescriptorType::eStorageBuffer,
+                                  nullptr, // Descriptor image info
+                                  &descriptorBufferInfo));
+
+          this->mDevice->updateDescriptorSets(computeWriteDescriptorSets,
+                                              nullptr);
+      }
+
+    KP_LOG_DEBUG("Kompue Algorithm successfully run init");
     }
 
     /**

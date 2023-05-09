@@ -49,6 +49,7 @@ Algorithm::destroy()
         this->mPipeline = nullptr;
     }
 
+  /*
     if (this->mFreePipelineCache && this->mPipelineCache) {
         KP_LOG_DEBUG("Kompute Algorithm Destroying pipeline cache");
         if (!this->mPipelineCache) {
@@ -60,7 +61,7 @@ Algorithm::destroy()
           (vk::Optional<const vk::AllocationCallbacks>)nullptr);
         this->mPipelineCache = nullptr;
     }
-
+  */
     if (this->mFreePipelineLayout && this->mPipelineLayout) {
         KP_LOG_DEBUG("Kompute Algorithm Destroying pipeline layout");
         if (!this->mPipelineLayout) {
@@ -284,12 +285,22 @@ Algorithm::createPipeline()
                                                vk::Pipeline(),
                                                0);
 
+    // auto t0 = std::chrono::high_resolution_clock::now();
+  
+
+  // Use pipeline cache passed in
+  this->mFreePipelineCache = false;
+
+/*
     vk::PipelineCacheCreateInfo pipelineCacheInfo =
       vk::PipelineCacheCreateInfo();
     this->mPipelineCache = std::make_shared<vk::PipelineCache>();
     this->mDevice->createPipelineCache(
       &pipelineCacheInfo, nullptr, this->mPipelineCache.get());
     this->mFreePipelineCache = true;
+*/
+    
+    // auto t1 = std::chrono::high_resolution_clock::now();
 
 #ifdef KOMPUTE_CREATE_PIPELINE_RESULT_VALUE
     vk::ResultValue<vk::Pipeline> pipelineResult =
@@ -310,6 +321,10 @@ Algorithm::createPipeline()
     this->mPipeline = std::make_shared<vk::Pipeline>(pipeline);
     this->mFreePipeline = true;
 #endif
+//     auto t2 = std::chrono::high_resolution_clock::now();
+
+//  fmt::print("pipeline time: {}\n", 
+//                         std::chrono::duration<double>(t2-t1).count()); 
 
     // TODO: Update to consistent
     // this->mPipeline = std::make_shared<vk::Pipeline>();
@@ -336,6 +351,15 @@ Algorithm::recordBindCore(const vk::CommandBuffer& commandBuffer)
                                      *this->mDescriptorSet,
                                      nullptr // Dispatcher
     );
+}
+
+void
+Algorithm::recordBindPipeline(const vk::CommandBuffer& commandBuffer)
+{
+    KP_LOG_DEBUG("Kompute Algorithm binding pipeline");
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute,
+                               *this->mPipeline);
 }
 
 void

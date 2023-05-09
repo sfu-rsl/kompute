@@ -8,7 +8,8 @@ Sequence::Sequence(std::shared_ptr<vk::PhysicalDevice> physicalDevice,
                    std::shared_ptr<vk::Device> device,
                    std::shared_ptr<vk::Queue> computeQueue,
                    uint32_t queueIndex,
-                   uint32_t totalTimestamps)
+                   uint32_t totalTimestamps,
+                   std::mutex* queue_lock): queue_lock(queue_lock)
 {
     KP_LOG_DEBUG("Kompute Sequence Constructor with existing device & queue");
 
@@ -49,7 +50,9 @@ Sequence::begin()
     }
 
     KP_LOG_INFO("Kompute Sequence command now started recording");
-    this->mCommandBuffer->begin(vk::CommandBufferBeginInfo());
+    vk::CommandBufferBeginInfo begin_info;
+    begin_info.flags |= vk::CommandBufferUsageFlagBits::eSimultaneousUse;
+    this->mCommandBuffer->begin(begin_info);
     this->mRecording = true;
 
     // latch the first timestamp before any commands are submitted
@@ -126,13 +129,22 @@ Sequence::evalAsync()
     vk::SubmitInfo submitInfo(
       0, nullptr, nullptr, 1, this->mCommandBuffer.get());
 
-    this->mFence = this->mDevice->createFence(vk::FenceCreateInfo());
+    fence_lock.lock();
+    if (!this->mFence) {
+        this->mFence = new vk::Fence(this->mDevice->createFence(vk::FenceCreateInfo()));
+    }
+    else {
+        this->mDevice->resetFences({*this->mFence});
+    }
+    fence_lock.unlock();
 
     KP_LOG_DEBUG(
       "Kompute sequence submitting command buffer into compute queue");
 
-    this->mComputeQueue->submit(1, &submitInfo, this->mFence);
-
+    if (queue_lock) queue_lock->lock();
+    this->mComputeQueue->submit(1, &submitInfo, *this->mFence);
+    if (queue_lock) queue_lock->unlock();
+    
     return shared_from_this();
 }
 
@@ -153,10 +165,17 @@ Sequence::evalAwait(uint64_t waitFor)
         return shared_from_this();
     }
 
-    vk::Result result =
-      this->mDevice->waitForFences(1, &this->mFence, VK_TRUE, waitFor);
-    this->mDevice->destroy(
-      this->mFence, (vk::Optional<const vk::AllocationCallbacks>)nullptr);
+    fence_lock.lock();
+    vk::Result result = vk::Result::eNotReady;
+    while (result == vk::Result::eNotReady) {
+        result = this->mDevice->getFenceStatus(*this->mFence);
+    }
+
+    // vk::Result result =
+    //   this->mDevice->waitForFences(1, this->mFence, VK_TRUE, waitFor);
+    // this->mDevice->destroy(
+    //   this->mFence, (vk::Optional<const vk::AllocationCallbacks>)nullptr);
+    fence_lock.unlock();
 
     this->mIsRunning = false;
 
@@ -261,6 +280,15 @@ Sequence::destroy()
         this->timestampQueryPool = nullptr;
         KP_LOG_DEBUG("Kompute Sequence Destroyed QueryPool");
     }
+
+    fence_lock.lock();
+    if (this->mFence) {
+           this->mDevice->destroy(
+      *this->mFence, (vk::Optional<const vk::AllocationCallbacks>)nullptr);
+      delete this->mFence;
+      this->mFence = nullptr;
+    }
+    fence_lock.unlock();
 
     if (this->mDevice) {
         this->mDevice = nullptr;
