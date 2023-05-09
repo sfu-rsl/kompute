@@ -1,3 +1,17 @@
+# What is this?
+
+This is a modified version of Kompute used for our projects. The main changes are:
+
+- The Vulkan Memory Allocator library is used for making tensor allocations
+- Added DeviceCached tensor type for faster access of values on host
+- Single shared pipeline cache
+- Can specify range for buffer synchronization
+- Locks for multi-threaded queue submission
+- Fences are reused for queue submissions
+- Resources are unmanaged by default
+
+Original README follows below.
+<hr>
 
 ![GitHub](https://img.shields.io/badge/Version-0.7.0-green.svg)
 ![GitHub](https://img.shields.io/badge/C++-14—20-purple.svg)
